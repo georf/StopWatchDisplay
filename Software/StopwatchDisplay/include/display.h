@@ -1,0 +1,21 @@
+#include <base.h>
+
+#define pinTimerClock 3
+#define pinTimerClockReset 2
+
+#define pinShiftLatch 6
+#define pinShiftData 4
+#define pinShiftClock 5
+
+class Display
+{
+public:
+    void Startup();
+    void ShowFrame();
+    static uint8_t CharRepresentation(const char character);
+    void SetOutput(uint8_t line, const char* characters);
+
+private:
+    uint8_t current_char_index = 0;
+    char currentOutput[2][5] = {"", ""};
+};
