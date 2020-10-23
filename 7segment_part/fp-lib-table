@@ -1,0 +1,4 @@
+(fp_lib_table
+  (lib (name openhardware)(type KiCad)(uri /home/georf/Dokumente/Projekte/7-Segment-Stoppuhr/openhardware.pretty)(options "")(descr ""))
+  (lib (name OPENHARDWARE)(type Legacy)(uri /home/georf/Dokumente/Projekte/OPENHARDWARE.mod)(options "")(descr ""))
+)
