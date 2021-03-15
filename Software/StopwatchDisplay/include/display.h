@@ -5,15 +5,15 @@
 
 #define pinShiftLatch 6
 #define pinShiftData 4
-#define pinShiftClock 5
+#define pinShiftClock 7
 
 class Display
 {
 public:
     void Startup();
     void ShowFrame();
-    static uint8_t CharRepresentation(const char character);
-    void SetOutput(uint8_t line, const char* characters);
+    static uint8_t Representation(const char character);
+    void SetOutput(uint8_t line, const char *characters);
 
 private:
     uint8_t current_char_index = 0;

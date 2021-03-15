@@ -1,30 +1,38 @@
 #include <serial_control.h>
 
+SerialControl::SerialControl(void (*pCallbackStartF)(), void (*pCallbackWaitF)(), void (*pCallbackShowF)(SerialControl *))
+{
+    pCallbackStart = pCallbackStartF;
+    pCallbackWait = pCallbackWaitF;
+    pCallbackShow = pCallbackShowF;
+}
+
 void SerialControl::Startup()
 {
     Serial.begin(9600);
+    while (!Serial) ;
 }
 
-Modus SerialControl::Handle()
+void SerialControl::Handle()
 {
     char control;
     if (Serial.available())
     {
         control = Serial.read();
-        Serial.println(control);
-        if (control == NEXT_LINE)
+        Serial.print(control);
+        if (control == NEXT_LINE || control == '\r')
         {
             transmitMode = MODE_READY;
         }
         else if (transmitMode == MODE_READY && control == MODE_CHAR_START)
         {
             transmitMode = MODE_CONTROL;
-            return STARTING;
+            return pCallbackStart();
         }
         else if (transmitMode == MODE_READY && control == MODE_CHAR_WAIT)
         {
             transmitMode = MODE_CONTROL;
-            return WAITING;
+            return pCallbackWait();
         }
         else if (transmitMode == MODE_READY && (control == MODE_CHAR_1 || control == MODE_CHAR_2))
         {
@@ -40,7 +48,7 @@ Modus SerialControl::Handle()
             if (receivedTimePosition > 4)
             {
                 transmitMode = MODE_CONTROL;
-                return SHOWING;
+                return pCallbackShow(this);
             }
         }
         else if (transmitMode == MODE_READY && control == MODE_CHAR_END)
@@ -48,7 +56,7 @@ Modus SerialControl::Handle()
             transmitMode = MODE_TIME_END;
         }
     }
-    return NO_CHANGE;
+    return;
 }
 
 uint8_t SerialControl::LastLine()

@@ -20,8 +20,8 @@ boolean StopWatch::HasUpdate()
 
 void StopWatch::Output(char *output)
 {
-  output[0] = 48 + (time / 10000 % 10);
-  output[1] = 48 + (time / 1000 % 10);
+  output[0] = 48 + (time / 6000);
+  output[1] = 48 + ((time / 100 % 60) / 10);
   output[2] = 48 + (time / 100 % 10);
   output[3] = 48 + (time / 10 % 10);
   output[4] = 48 + (time % 10);

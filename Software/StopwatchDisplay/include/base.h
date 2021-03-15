@@ -2,12 +2,12 @@
 
 #pragma once
 
+#define empty "     "
+
 enum Modus
 {
     BOOTING,
     WAITING,
     SHOWING,
-    RUNNING,
-    STARTING,
-    NO_CHANGE
+    RUNNING
 };

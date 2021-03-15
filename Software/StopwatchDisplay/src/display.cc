@@ -15,34 +15,27 @@ void Display::Startup()
     digitalWrite(pinShiftClock, LOW);
 
     SetOutput(0, " boot");
-    SetOutput(1, "     ");
+    SetOutput(1, empty);
 }
 
 void Display::ShowFrame()
 {
-    if (micros() % 5000000 < 300)
-    {
-        Serial.println("_______");
-        for (uint8_t line = 0; line < 2; line++)
-        {
-            Serial.print("|");
-            for (uint8_t i = 0; i < 5; i++)
-            {
-                Serial.print(currentOutput[line][i]);
-            }
-            Serial.println("|");
-        }
-        Serial.println("^^^^^^^");
-    }
     char currentChar;
+    uint8_t points = 0;
+
+    if (millis() / 1000 % 2 == 0)
+    {
+        points = 0b00000001;
+    }
 
     // prepare shift registers
     digitalWrite(pinShiftLatch, LOW);
     for (uint8_t index = 0; index < 2; index++)
     {
-        currentChar = currentOutput[index][current_char_index];
-        shiftOut(pinShiftData, pinShiftClock, MSBFIRST, Display::CharRepresentation(currentChar));
+        shiftOut(pinShiftData, pinShiftClock, MSBFIRST, 0);
     }
+    // output shift registers
+    digitalWrite(pinShiftLatch, HIGH);
 
     // count clock to next position
     current_char_index++;
@@ -58,11 +51,18 @@ void Display::ShowFrame()
         digitalWrite(pinTimerClock, LOW);
     }
 
+    // prepare shift registers
+    digitalWrite(pinShiftLatch, LOW);
+    for (uint8_t line = 0; line < 2; line++)
+    {
+        currentChar = currentOutput[line][current_char_index];
+        shiftOut(pinShiftData, pinShiftClock, MSBFIRST, Display::Representation(currentChar) | points);
+    }
     // output shift registers
     digitalWrite(pinShiftLatch, HIGH);
 }
 
-uint8_t Display::CharRepresentation(char character)
+uint8_t Display::Representation(char character)
 {
     //   - a -
     // |       |
@@ -78,7 +78,7 @@ uint8_t Display::CharRepresentation(char character)
 
     switch (character)
     {
-    //       0babcdefgh;
+    //         0babcdefgh;
     case '0':
         return 0b11101110;
     case '1':
@@ -102,7 +102,7 @@ uint8_t Display::CharRepresentation(char character)
     case '-':
         return 0b00010000;
     case 'V':
-        return 0b01101110;
+        return 0b00001110;
     case 'b':
         return 0b01011110;
     case 'o':
@@ -118,10 +118,7 @@ uint8_t Display::CharRepresentation(char character)
 
 void Display::SetOutput(uint8_t line, const char *characters)
 {
-    Serial.print(line);
-    Serial.print(" :");
-    Serial.println(characters);
-
+    Serial.println(line);
     for (uint8_t i = 0; i < 5; i++)
     {
         currentOutput[line][i] = characters[i];

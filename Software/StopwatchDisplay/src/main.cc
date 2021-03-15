@@ -1,50 +1,66 @@
 #include <main.h>
 
-bool btn1Pressed = 0;
-unsigned long btn1NextPress = 0;
-bool btn2Pressed = 0;
-unsigned long btn2NextPress = 0;
-
 Display display;
-SerialControl serial_control;
-StopWatch stop_watch;
+SerialControl serialControl = SerialControl(&stopWatchStart, &waiting, &showingCallback);
+StopWatch stopWatch;
 Modus modus;
 Modus lines[2];
+Button btn1 = Button(pinBtn1, &btn1Callback);
+Button btn2 = Button(pinBtn2, &btn2Callback);
+VoltageControl voltageControl;
 
 void setup()
 {
+  noInterrupts();
+
+  //set timer1 interrupt at 1Hz
+  TCCR1A = 0; // set entire TCCR1A register to 0
+  TCCR1B = 0; // same for TCCR1B
+  TCNT1 = 0;  //initialize counter value to 0
+  // set compare match register for 1hz increments
+  // OCR1A = 15624; // = (16*10^6) / (1*1024) - 1 (must be <65536)
+  OCR1A = 14; // = (16*10^6) / (1*1024) - 1 (must be <65536)
+  // // set compare match register for 1000hz increments
+  // OCR1A = 14; // = (16*10^6) / (1000*1024) - 1 (must be <65536)
+  // turn on CTC mode
+  TCCR1B |= (1 << WGM12);
+  // Set CS10 and CS12 bits for 1024 prescaler
+  TCCR1B |= (1 << CS12) | (1 << CS10);
+  // enable timer compare interrupt
+  TIMSK1 |= (1 << OCIE1A);
+  interrupts();
+
   modus = BOOTING;
   lines[0] = BOOTING;
   lines[1] = BOOTING;
 
+  voltageControl.Startup();
   display.Startup();
-  serial_control.Startup();
+  serialControl.Startup();
+}
 
-  pinMode(LED_BUILTIN, OUTPUT);
-  digitalWrite(LED_BUILTIN, LOW);
-
-  pinMode(pinBtn1, INPUT);
-  pinMode(pinBtn2, INPUT);
-
-  pinMode(pinVoltage, INPUT);
+ISR(TIMER1_COMPA_vect)
+{
+  display.ShowFrame();
 }
 
 void loop()
 {
-  handleBtns();
-  handleSerialControl();
+  voltageControl.Check();
+  btn1.read();
+  btn2.read();
+  serialControl.Handle();
   handleDisplay();
-
-  display.ShowFrame();
 }
 
 void handleDisplay()
 {
   char output[5];
+  uint32_t milliSeconds = millis();
   switch (modus)
   {
   case RUNNING:
-    if (!stop_watch.HasUpdate())
+    if (!stopWatch.HasUpdate())
     {
       return;
     }
@@ -53,7 +69,7 @@ void handleDisplay()
     {
       if (lines[i] == RUNNING)
       {
-        stop_watch.Output(output);
+        stopWatch.Output(output);
         display.SetOutput(i, output);
         return;
       }
@@ -66,87 +82,62 @@ void handleDisplay()
     break;
 
   case BOOTING:
-    if (millis() > 3000)
-    {
-      char voltage[5];
-      uint16_t input_voltage = inputVoltage() * 100;
 
-      voltage[0] = ' ';
-      voltage[1] = 48 + (input_voltage / 1000 % 10);
-      voltage[2] = 48 + (input_voltage / 100 % 10);
-      voltage[3] = 48 + (input_voltage / 10 % 10);
-      voltage[4] = 48 + (input_voltage % 10);
-      display.SetOutput(0, voltage);
+    if (milliSeconds > 1000 && milliSeconds < 4000)
+    {
+      voltageControl.Output(output);
+      display.SetOutput(0, output);
       display.SetOutput(1, "Volt");
     }
-
-  default:
-    break;
-  }
-}
-
-void handleSerialControl()
-{
-  uint8_t last_line;
-  switch (serial_control.Handle())
-  {
-  case STARTING:
-    stopWatchStart();
-    break;
-
-  case WAITING:
-    modus = WAITING;
+    else if (milliSeconds >= 4000 && milliSeconds < 5000)
+    {
+      display.SetOutput(0, "88888");
+      display.SetOutput(1, "88888");
+    }
+    else if (milliSeconds >= 5000)
+    {
+      waiting();
+    }
     break;
 
   case SHOWING:
-    last_line = serial_control.LastLine();
-    display.SetOutput(last_line, serial_control.LastTime());
-    lines[last_line] = SHOWING;
-    break;
-
-  default:
     break;
   }
 }
 
-void handleBtns()
+void showingCallback(SerialControl *control)
 {
-  unsigned long current_millis = millis();
-  if (!btn1Pressed && btn1NextPress < current_millis && digitalRead(pinBtn1) == LOW)
-  {
-    btn1Pressed = true;
+  uint8_t last_line;
+  last_line = control->LastLine();
+  display.SetOutput(last_line, control->LastTime());
+  lines[last_line] = SHOWING;
+}
 
-    if (modus == RUNNING)
-      stopWatchStop();
-    else
-      stopWatchStart();
-  }
-  else if (btn1Pressed && digitalRead(pinBtn1) == HIGH)
+void btn1Callback()
+{
+  if (modus == WAITING)
   {
-    btn1NextPress = current_millis + 200;
-    btn1Pressed = false;
+    stopWatchStart();
   }
-  if (!btn2Pressed && btn2NextPress < current_millis && digitalRead(pinBtn2) == LOW)
+  else if (modus == RUNNING)
   {
-    btn2Pressed = true;
+    stopWatchStop();
+  }
+}
 
-    modus = WAITING;
-  }
-  else if (btn2Pressed && digitalRead(pinBtn2) == HIGH)
-  {
-    btn2NextPress = current_millis + 200;
-    btn2Pressed = false;
-  }
+void btn2Callback()
+{
+  waiting();
 }
 
 void stopWatchStart()
 {
-  stop_watch.Start();
+  stopWatch.Start();
   modus = RUNNING;
   lines[0] = RUNNING;
   lines[1] = RUNNING;
-  display.SetOutput(0, "00000");
-  display.SetOutput(1, "     ");
+  display.SetOutput(0, empty);
+  display.SetOutput(1, empty);
 }
 
 void stopWatchStop()
@@ -156,7 +147,7 @@ void stopWatchStop()
   {
     if (lines[i] == RUNNING)
     {
-      stop_watch.Output(output);
+      stopWatch.Output(output);
       display.SetOutput(i, output);
       lines[i] = SHOWING;
       return;
@@ -164,16 +155,11 @@ void stopWatchStop()
   }
 }
 
-float inputVoltage()
-{
-  float vout = (analogRead(pinVoltage) * 5.0) / 1024.0;
-  return vout / (voltageDividerR2 / (voltageDividerR1 + voltageDividerR2));
-}
-
 void waiting()
 {
   uint8_t output_line = millis() / 1000 % 2;
-  display.SetOutput((output_line + 1) % 2, "     ");
+  modus = WAITING;
+  display.SetOutput((output_line + 1) % 2, empty);
   switch (millis() % 1000 / 200)
   {
   case 0:

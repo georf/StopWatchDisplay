@@ -15,14 +15,18 @@
 class SerialControl
 {
 public:
-    void Startup();
-    Modus Handle();
+    void Handle();
     uint8_t LastLine();
     char *LastTime();
+    SerialControl(void (*pCallbackStartF)(), void (*pCallbackWaitF)(), void (*pCallbackShowF)(SerialControl *));
+    void Startup();
 
 private:
     uint8_t transmitMode = MODE_READY;
     char receivedTime[2][5];
     uint8_t receivedPart;
     uint8_t receivedTimePosition;
+    void (*pCallbackStart)();
+    void (*pCallbackWait)();
+    void (*pCallbackShow)(SerialControl *);
 };
