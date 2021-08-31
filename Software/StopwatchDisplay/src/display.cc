@@ -14,19 +14,14 @@ void Display::Startup()
     pinMode(pinShiftClock, OUTPUT);
     digitalWrite(pinShiftClock, LOW);
 
-    SetOutput(0, " boot");
-    SetOutput(1, empty);
+    SetOutput(0, " boot", false, false);
+    SetOutput(1, empty, false, false);
 }
 
 void Display::ShowFrame()
 {
     char currentChar;
-    uint8_t points = 0;
-
-    if (millis() / 1000 % 2 == 0)
-    {
-        points = 0b00000001;
-    }
+    uint8_t pointOutput;
 
     // prepare shift registers
     digitalWrite(pinShiftLatch, LOW);
@@ -56,7 +51,11 @@ void Display::ShowFrame()
     for (uint8_t line = 0; line < 2; line++)
     {
         currentChar = currentOutput[line][current_char_index];
-        shiftOut(pinShiftData, pinShiftClock, MSBFIRST, Display::Representation(currentChar) | points);
+        pointOutput = 0;
+        if (current_char_index < 2)
+            pointOutput = currentPoints[line][current_char_index] ? 0b00000001 : 0;
+
+        shiftOut(pinShiftData, pinShiftClock, MSBFIRST, Display::Representation(currentChar) | pointOutput);
     }
     // output shift registers
     digitalWrite(pinShiftLatch, HIGH);
@@ -116,11 +115,21 @@ uint8_t Display::Representation(char character)
     }
 }
 
-void Display::SetOutput(uint8_t line, const char *characters)
+void Display::SetOutput(uint8_t line, const char *characters, bool points, bool clean)
 {
-    Serial.println(line);
     for (uint8_t i = 0; i < 5; i++)
     {
-        currentOutput[line][i] = characters[i];
+        if (clean && characters[i] == '0')
+        {
+            currentOutput[line][i] = ' ';
+        }
+        else
+        {
+            clean = false;
+            currentOutput[line][i] = characters[i];
+        }
     }
+
+    currentPoints[line][0] = points && currentOutput[line][0] != ' ';
+    currentPoints[line][1] = points && currentOutput[line][2] != ' ';
 }

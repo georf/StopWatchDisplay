@@ -70,7 +70,7 @@ void handleDisplay()
       if (lines[i] == RUNNING)
       {
         stopWatch.Output(output);
-        display.SetOutput(i, output);
+        display.SetOutput(i, output, true, true);
         return;
       }
     }
@@ -78,7 +78,7 @@ void handleDisplay()
     break;
 
   case WAITING:
-    waiting();
+    waitingShow();
     break;
 
   case BOOTING:
@@ -86,13 +86,13 @@ void handleDisplay()
     if (milliSeconds > 1000 && milliSeconds < 4000)
     {
       voltageControl.Output(output);
-      display.SetOutput(0, output);
-      display.SetOutput(1, "Volt");
+      display.SetOutput(0, output, true, false);
+      display.SetOutput(1, "Volt", false, false);
     }
     else if (milliSeconds >= 4000 && milliSeconds < 5000)
     {
-      display.SetOutput(0, "88888");
-      display.SetOutput(1, "88888");
+      display.SetOutput(0, "88888", true, false);
+      display.SetOutput(1, "88888", true, false);
     }
     else if (milliSeconds >= 5000)
     {
@@ -136,8 +136,8 @@ void stopWatchStart()
   modus = RUNNING;
   lines[0] = RUNNING;
   lines[1] = RUNNING;
-  display.SetOutput(0, empty);
-  display.SetOutput(1, empty);
+  display.SetOutput(0, empty, false, false);
+  display.SetOutput(1, empty, false, false);
 }
 
 void stopWatchStop()
@@ -148,7 +148,7 @@ void stopWatchStop()
     if (lines[i] == RUNNING)
     {
       stopWatch.Output(output);
-      display.SetOutput(i, output);
+      display.SetOutput(i, output, true, true);
       lines[i] = SHOWING;
       return;
     }
@@ -157,25 +157,44 @@ void stopWatchStop()
 
 void waiting()
 {
-  uint8_t output_line = millis() / 1000 % 2;
   modus = WAITING;
-  display.SetOutput((output_line + 1) % 2, empty);
+  lines[0] = WAITING;
+  lines[1] = WAITING;
+  waitingShow();
+}
+
+void waitingShow()
+{
+  if (lines[0] != WAITING && lines[1] != WAITING)
+  {
+    modus = RUNNING;
+    return;
+  }
+
+  uint8_t output_line = millis() / 1000 % 2;
+
+  if (lines[output_line] != WAITING)
+    output_line = (output_line + 1) % 2;
+
+  if (lines[(output_line + 1) % 2] == WAITING)
+    display.SetOutput((output_line + 1) % 2, empty, false, false);
+
   switch (millis() % 1000 / 200)
   {
   case 0:
-    display.SetOutput(output_line, "-    ");
+    display.SetOutput(output_line, "-    ", false, false);
     break;
   case 1:
-    display.SetOutput(output_line, " -   ");
+    display.SetOutput(output_line, " -   ", false, false);
     break;
   case 2:
-    display.SetOutput(output_line, "  -  ");
+    display.SetOutput(output_line, "  -  ", false, false);
     break;
   case 3:
-    display.SetOutput(output_line, "   - ");
+    display.SetOutput(output_line, "   - ", false, false);
     break;
   case 4:
-    display.SetOutput(output_line, "    -");
+    display.SetOutput(output_line, "    -", false, false);
     break;
   }
 }

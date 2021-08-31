@@ -13,6 +13,7 @@ void handleDisplay();
 void stopWatchStart();
 void stopWatchStop();
 void waiting();
+void waitingShow();
 void showingCallback(uint32_t lastDeciTime, uint8_t lastLine);
 
 void btn1Callback();
