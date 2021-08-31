@@ -105,12 +105,12 @@ void handleDisplay()
   }
 }
 
-void showingCallback(SerialControl *control)
+void showingCallback(uint32_t lastDeciTime, uint8_t lastLine)
 {
-  uint8_t last_line;
-  last_line = control->LastLine();
-  display.SetOutput(last_line, control->LastTime());
-  lines[last_line] = SHOWING;
+  char output[5];
+  StopWatch::CentiSecondsToChars(lastDeciTime, output);
+  display.SetOutput(lastLine, output, true, true);
+  lines[lastLine] = SHOWING;
 }
 
 void btn1Callback()
